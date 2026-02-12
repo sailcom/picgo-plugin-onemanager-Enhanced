@@ -1,3 +1,17 @@
+# Enhanced 版本优化内容
+
+- 建议搭配[OneManager_Enhanced](https://github.com/sailcom/OneManager_Enhanced)共同使用，效果更佳！
+- 基于 [picgo-plugin-onemanager-v2](https://github.com/steven-jianhao-li/picgo-plugin-onemanager-v2)进行更新。
+
+优化项包括：
+
+1. 增加token配置项，填入onemanager的picgo_auth，增强上传安全性；
+2. 上传图片重命名，与onemanager的逻辑保持一致；
+3. 修复原代码中，若onedrive-vercel-index为空时返回路径错误的问题（现在不需要使用onedrive-vercel-index也可以返回正确的文件名啦）
+
+---
+# 以下为原作者的说明
+
 # picgo-plugin-onemanager-v2
 
 >  A plugin for [PicGo](https://github.com/Molunerfinn/PicGo) to use OneDrive as imgur.

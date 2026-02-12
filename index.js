@@ -10,6 +10,7 @@ module.exports = (ctx) => {
                 let url = userConfig.url;
                 let directLinkURL = userConfig.directLinkURL;
                 let SecurityCode = userConfig.SecurityCode;
+                let token = userConfig.token;
                 if (!url) {
                     ctx.emit('notification', {
                         title: '上传失败',
@@ -21,7 +22,8 @@ module.exports = (ctx) => {
                 }
                 let imgList = ctx.output
                 for (let i in imgList) {
-                    const uploadInfo = await getUploadInfo(ctx, url, imgList[i], directLinkURL, SecurityCode);
+                    //const uploadInfo = await getUploadInfo(ctx, url, imgList[i], directLinkURL, SecurityCode);
+                    const uploadInfo = await getUploadInfo(ctx, url, imgList[i], directLinkURL, SecurityCode, token);
                     if (imgList[i].url) continue;
                     await upload(ctx, uploadInfo.uploadUrl, imgList[i], uploadInfo.imgUrl);
                 }
@@ -63,20 +65,27 @@ const upload = async (ctx, url, img, imgUrl) => {
     }
 }
 
-const getUploadInfo = async (ctx, url, img, directLinkURL, SecurityCode) => {
+const getUploadInfo = async (ctx, url, img, directLinkURL, SecurityCode, token) => {
     let md5 = crypto.createHash("md5");
     // 获取图片上传url
-    let customHeader = {'x-requested-with': 'XMLHttpRequest'};
+    let customHeader = { 'x-requested-with': 'XMLHttpRequest' };
     md5.update(img.buffer);
     md5 = md5.digest("hex");
     let filesize = img.buffer.length;
     let getUpload = {
-        filemd5: Date.now(),
+        filemd5: md5,
         filelastModified: Date.now(),
         filesize: filesize,
         upbigfilename: Date.now() + img.extname
     }
-    let getUrlOpts = getOpts(customHeader, getUpload, url + "?action=upbigfile", "POST", true);
+
+    // 构造请求 URL，如果有 token 则追加
+    let actionUrl = url + "?action=upbigfile";
+    if (token) {
+        actionUrl += "&auth=" + encodeURIComponent(token);
+    }
+
+    let getUrlOpts = getOpts(customHeader, getUpload, actionUrl, "POST", true);
 
     let resp;
     try {
@@ -104,7 +113,20 @@ const getUploadInfo = async (ctx, url, img, directLinkURL, SecurityCode) => {
     }
     resp = JSON.parse(resp);
     resp.imgName = getUpload.upbigfilename;
-    resp.imgUrl = directLinkURL + getUpload.upbigfilename + "&" + SecurityCode;
+    resp.imgUrl = directLinkURL + getUpload.upbigfilename;
+
+    if (resp.custom_filename) {
+        // 如果服务器返回了带日期的路径 (例如 "2026/02/xxx.jpg")，直接使用它
+        resp.imgUrl = directLinkURL + resp.custom_filename;
+    } else {
+        // 否则回退到旧逻辑 (纯文件名)
+        resp.imgUrl = directLinkURL + getUpload.upbigfilename;
+    }
+
+    if (SecurityCode) {
+        resp.imgUrl = resp.imgUrl + "&" + SecurityCode;
+    }
+
     return resp;
 }
 const getOpts = (customHeader = {}, body, url = "", method = "POST", toStrBody = false) => {
@@ -170,6 +192,14 @@ const config = ctx => {
             required: false,
             message: '请输入 onedrive-vercel-index 的加密后缀（odpt=XXXXXX）',
             alias: '加密后缀'
+        },
+        {
+            name: 'token',
+            type: 'input',
+            default: userConfig.token,
+            required: true,
+            message: '请输入onemanager设置的picgo_auth',
+            alias: 'token'
         }
     ];
 }
